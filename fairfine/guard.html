@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Issue Fine — FairFine</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand"><span class="dot"></span> FairFine</div>
+  <a class="back-link" href="index.html">&larr; Home</a>
+</div>
+
+<div class="wrap">
+  <div class="eyebrow">Guard Dashboard</div>
+  <h1 class="page-title">Issue a Fine</h1>
+  <p class="subtitle">Fill this in on the spot. It's logged with a timestamp the moment you submit.</p>
+
+  <div class="card">
+    <form id="fineForm">
+      <label for="studentId">Student ID</label>
+      <input type="text" id="studentId" placeholder="e.g. 22BCE1042" required>
+
+      <label>Reason</label>
+      <div class="radio-row" id="reasonPills">
+        <label class="radio-pill" data-value="No ID card">
+          <input type="radio" name="reason" value="No ID card"> No ID card
+        </label>
+        <label class="radio-pill" data-value="Misconduct">
+          <input type="radio" name="reason" value="Misconduct"> Misconduct
+        </label>
+        <label class="radio-pill" data-value="Other">
+          <input type="radio" name="reason" value="Other"> Other
+        </label>
+      </div>
+
+      <label for="location">Location</label>
+      <select id="location" required>
+        <option value="">Select location</option>
+        <option>Academic Block</option>
+        <option>Hostel Gate</option>
+        <option>Library</option>
+        <option>Main Gate</option>
+        <option>Cafeteria</option>
+      </select>
+
+      <label for="photo">Photo note (optional)</label>
+      <input type="text" id="photo" placeholder="e.g. photo taken on phone">
+
+      <button type="submit" class="btn">Issue Fine</button>
+      <div class="status-msg" id="statusMsg"></div>
+    </form>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+seedIfEmpty();
+
+// reason pill toggle UI
+document.querySelectorAll('.radio-pill').forEach(pill => {
+  pill.addEventListener('click', () => {
+    document.querySelectorAll('.radio-pill').forEach(p => p.classList.remove('active'));
+    pill.classList.add('active');
+    pill.querySelector('input').checked = true;
+  });
+});
+
+document.getElementById('fineForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  const studentId = document.getElementById('studentId').value.trim();
+  const reason = document.querySelector('input[name="reason"]:checked');
+  const location = document.getElementById('location').value;
+  const photo = document.getElementById('photo').value.trim();
+  const msg = document.getElementById('statusMsg');
+
+  if (!studentId || !reason || !location) {
+    msg.textContent = "Fill in student ID, reason, and location before submitting.";
+    msg.className = "status-msg show err";
+    return;
+  }
+
+  const fine = addFine({ studentId, reason: reason.value, location, photo });
+
+  msg.textContent = `Fine ${fine.id} issued for ${fine.studentId} at ${fmtTime(fine.time)}.`;
+  msg.className = "status-msg show ok";
+
+  this.reset();
+  document.querySelectorAll('.radio-pill').forEach(p => p.classList.remove('active'));
+});
+</script>
+</body>
+</html>

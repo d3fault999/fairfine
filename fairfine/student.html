@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Fines — FairFine</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand"><span class="dot"></span> FairFine</div>
+  <a class="back-link" href="index.html">&larr; Home</a>
+</div>
+
+<div class="wrap">
+  <div class="eyebrow">Student Dashboard</div>
+  <h1 class="page-title">My Fines</h1>
+  <p class="subtitle">Enter your student ID to see every fine on record and appeal one if needed.</p>
+
+  <div class="card">
+    <label for="lookupId">Student ID</label>
+    <div style="display:flex; gap:10px;">
+      <input type="text" id="lookupId" placeholder="e.g. 22BCE1042">
+      <button class="btn small" id="lookupBtn" style="margin-top:0;">Look up</button>
+    </div>
+  </div>
+
+  <div id="results"></div>
+
+  <!-- inline appeal form -->
+  <div class="card hidden" id="appealBox">
+    <div class="eyebrow" id="appealFor"></div>
+    <label for="appealText">Why should this fine be reconsidered?</label>
+    <textarea id="appealText" rows="3" placeholder="Explain what happened..."></textarea>
+    <button class="btn" id="submitAppealBtn">Submit Appeal</button>
+    <button class="btn ghost small" id="cancelAppealBtn" style="margin-top:20px;">Cancel</button>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+seedIfEmpty();
+
+let currentFineForAppeal = null;
+
+function render(studentId) {
+  const results = document.getElementById('results');
+  const fines = getFinesForStudent(studentId);
+
+  if (fines.length === 0) {
+    results.innerHTML = `<div class="empty-state">No fines found for "${studentId.toUpperCase()}". Either a clean record, or check the ID.</div>`;
+    return;
+  }
+
+  results.innerHTML = fines.map(f => `
+    <div class="ticket">
+      <div>
+        <div class="ticket-id">${f.id} &middot; ${f.studentId}</div>
+        <div class="ticket-reason">${f.reason}</div>
+        <div class="ticket-meta">
+          ${f.location}<br>
+          ${fmtTime(f.time)}
+          ${f.appeal ? `<br><em>Appeal: "${f.appeal.text}"</em>` : ''}
+        </div>
+      </div>
+      <div class="ticket-right">
+        <span class="badge ${badgeClass(f.status)}">${f.status}</span>
+        ${f.status === 'unpaid' ? `<button class="btn small ghost" style="background:var(--ink); color:var(--text-on-ink);" onclick="openAppeal('${f.id}', '${f.reason.replace(/'/g,"")}')">Appeal</button>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+function openAppeal(fineId, reason) {
+  currentFineForAppeal = fineId;
+  document.getElementById('appealFor').textContent = `Appealing ${fineId} — ${reason}`;
+  document.getElementById('appealBox').classList.remove('hidden');
+  document.getElementById('appealBox').scrollIntoView({ behavior: 'smooth' });
+}
+
+document.getElementById('cancelAppealBtn').addEventListener('click', () => {
+  document.getElementById('appealBox').classList.add('hidden');
+  document.getElementById('appealText').value = '';
+});
+
+document.getElementById('submitAppealBtn').addEventListener('click', () => {
+  const text = document.getElementById('appealText').value.trim();
+  if (!text || !currentFineForAppeal) return;
+  submitAppeal(currentFineForAppeal, text);
+  document.getElementById('appealBox').classList.add('hidden');
+  document.getElementById('appealText').value = '';
+  render(document.getElementById('lookupId').value);
+});
+
+document.getElementById('lookupBtn').addEventListener('click', () => {
+  const id = document.getElementById('lookupId').value.trim();
+  if (id) render(id);
+});
+
+document.getElementById('lookupId').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('lookupBtn').click();
+});
+</script>
+</body>
+</html>

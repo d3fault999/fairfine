@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — FairFine</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand"><span class="dot"></span> FairFine</div>
+  <a class="back-link" href="index.html">&larr; Home</a>
+</div>
+
+<div class="wrap">
+
+  <!-- LOGIN GATE -->
+  <div id="loginGate">
+    <div class="eyebrow">Admin Login</div>
+    <h1 class="page-title">Restricted Access</h1>
+    <p class="subtitle">Password: <code style="color:var(--amber)">admin123</code></p>
+    <div class="card" style="max-width:360px;">
+      <label for="pw">Password</label>
+      <input type="password" id="pw" placeholder="Enter password">
+      <button class="btn" id="loginBtn">Log In</button>
+      <div class="status-msg" id="loginMsg"></div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD (hidden until login) -->
+  <div id="dashboard" class="hidden">
+    <div class="eyebrow">Admin Dashboard</div>
+    <h1 class="page-title">Review & Analytics</h1>
+    <p class="subtitle">Decide on appeals and see fine patterns across campus.</p>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="appeals">Appeals</button>
+      <button class="tab-btn" data-tab="analytics">Analytics</button>
+    </div>
+
+    <div id="tab-appeals">
+      <div id="appealsList"></div>
+    </div>
+
+    <div id="tab-analytics" class="hidden">
+      <div class="stat-row" id="statRow"></div>
+
+      <div class="card">
+        <div class="eyebrow">Fines by Reason</div>
+        <div class="bar-chart" id="chartReason"></div>
+      </div>
+
+      <div class="card">
+        <div class="eyebrow">Fines by Location</div>
+        <div class="bar-chart" id="chartLocation"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="app.js"></script>
+<script>
+seedIfEmpty();
+
+document.getElementById('loginBtn').addEventListener('click', tryLogin);
+document.getElementById('pw').addEventListener('keydown', e => { if (e.key === 'Enter') tryLogin(); });
+
+function tryLogin() {
+  const pw = document.getElementById('pw').value;
+  const msg = document.getElementById('loginMsg');
+  if (pw === 'admin123') {
+    document.getElementById('loginGate').classList.add('hidden');
+    document.getElementById('dashboard').classList.remove('hidden');
+    renderAppeals();
+    renderAnalytics();
+  } else {
+    msg.textContent = "Incorrect password.";
+    msg.className = "status-msg show err";
+  }
+}
+
+// tabs
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-appeals').classList.toggle('hidden', btn.dataset.tab !== 'appeals');
+    document.getElementById('tab-analytics').classList.toggle('hidden', btn.dataset.tab !== 'analytics');
+  });
+});
+
+function renderAppeals() {
+  const fines = getFines().filter(f => f.status === 'appealed');
+  const list = document.getElementById('appealsList');
+
+  if (fines.length === 0) {
+    list.innerHTML = `<div class="empty-state">No pending appeals right now.</div>`;
+    return;
+  }
+
+  list.innerHTML = fines.map(f => `
+    <div class="ticket">
+      <div>
+        <div class="ticket-id">${f.id} &middot; ${f.studentId}</div>
+        <div class="ticket-reason">${f.reason}</div>
+        <div class="ticket-meta">
+          ${f.location} &middot; ${fmtTime(f.time)}<br>
+          <em>"${f.appeal.text}"</em>
+        </div>
+      </div>
+      <div class="ticket-right">
+        <span class="badge ${badgeClass(f.status)}">${f.status}</span>
+        <div style="display:flex; gap:6px;">
+          <button class="btn small" style="background:var(--green); color:#0c1a10;" onclick="decide('${f.id}','approved')">Approve</button>
+          <button class="btn small danger" onclick="decide('${f.id}','rejected')">Reject</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function decide(fineId, decision) {
+  resolveAppeal(fineId, decision);
+  renderAppeals();
+  renderAnalytics();
+}
+
+function renderAnalytics() {
+  const fines = getFines();
+  const total = fines.length;
+  const pending = fines.filter(f => f.status === 'appealed').length;
+  const approved = fines.filter(f => f.status === 'approved').length;
+  const rejected = fines.filter(f => f.status === 'rejected').length;
+
+  document.getElementById('statRow').innerHTML = `
+    <div class="stat-box"><div class="num">${total}</div><div class="lbl">Total Fines</div></div>
+    <div class="stat-box"><div class="num">${pending}</div><div class="lbl">Pending Appeals</div></div>
+    <div class="stat-box"><div class="num">${approved}</div><div class="lbl">Approved</div></div>
+    <div class="stat-box"><div class="num">${rejected}</div><div class="lbl">Rejected</div></div>
+  `;
+
+  drawBarChart('chartReason', groupCount(fines, 'reason'));
+  drawBarChart('chartLocation', groupCount(fines, 'location'));
+}
+
+function groupCount(fines, key) {
+  const counts = {};
+  fines.forEach(f => { counts[f[key]] = (counts[f[key]] || 0) + 1; });
+  return counts;
+}
+
+function drawBarChart(elId, counts) {
+  const el = document.getElementById(elId);
+  const entries = Object.entries(counts);
+  if (entries.length === 0) {
+    el.innerHTML = `<div class="empty-state" style="width:100%;">No data yet.</div>`;
+    return;
+  }
+  const max = Math.max(...entries.map(e => e[1]));
+  el.innerHTML = entries.map(([label, count]) => `
+    <div class="bar-col">
+      <div class="bar-count">${count}</div>
+      <div class="bar" style="height:${Math.max((count / max) * 100, 4)}%"></div>
+      <div class="bar-label">${label}</div>
+    </div>
+  `).join('');
+}
+</script>
+</body>
+</html>
