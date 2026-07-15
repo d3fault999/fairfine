@@ -10,54 +10,144 @@
 
 <div class="topbar">
   <div class="brand"><span class="dot"></span> FairFine</div>
-  <a class="back-link" href="index.html">&larr; Home</a>
+  <div style="display:flex; align-items:center; gap:10px;">
+    <span class="back-link hidden" id="guardWhoami"></span>
+    <button class="btn small ghost hidden" id="logoutBtn">Log Out</button>
+    <a class="back-link" href="index.html">&larr; Home</a>
+  </div>
 </div>
 
 <div class="wrap">
-  <div class="eyebrow">Guard Dashboard</div>
-  <h1 class="page-title">Issue a Fine</h1>
-  <p class="subtitle">Fill this in on the spot. It's logged with a timestamp the moment you submit.</p>
 
-  <div class="card">
-    <form id="fineForm">
-      <label for="studentId">Student ID</label>
-      <input type="text" id="studentId" placeholder="e.g. 22BCE1042" required>
-
-      <label>Reason</label>
-      <div class="radio-row" id="reasonPills">
-        <label class="radio-pill" data-value="No ID card">
-          <input type="radio" name="reason" value="No ID card"> No ID card
-        </label>
-        <label class="radio-pill" data-value="Misconduct">
-          <input type="radio" name="reason" value="Misconduct"> Misconduct
-        </label>
-        <label class="radio-pill" data-value="Other">
-          <input type="radio" name="reason" value="Other"> Other
-        </label>
-      </div>
-
-      <label for="location">Location</label>
-      <select id="location" required>
-        <option value="">Select location</option>
-        <option>Academic Block</option>
-        <option>Hostel Gate</option>
-        <option>Library</option>
-        <option>Main Gate</option>
-        <option>Cafeteria</option>
+  <!-- LOGIN GATE -->
+  <div id="loginGate">
+    <div class="eyebrow">Warden Login</div>
+    <h1 class="page-title">Restricted Access</h1>
+    <p class="subtitle">Sign in with your warden account to issue a fine.</p>
+    <div class="card" style="max-width:360px;">
+      <label for="guardUser">Username</label>
+      <select id="guardUser">
+        <option value="warden1">warden1</option>
+        <option value="warden2">warden2</option>
       </select>
 
-      <label for="photo">Photo note (optional)</label>
-      <input type="text" id="photo" placeholder="e.g. photo taken on phone">
-
-      <button type="submit" class="btn">Issue Fine</button>
-      <div class="status-msg" id="statusMsg"></div>
-    </form>
+      <label for="guardPw">Password</label>
+      <input type="password" id="guardPw" placeholder="Enter password">
+      <button class="btn" id="guardLoginBtn">Log In</button>
+      <div class="status-msg" id="guardLoginMsg"></div>
+    </div>
   </div>
+
+  <!-- DASHBOARD (hidden until login) -->
+  <div id="dashboard" class="hidden">
+    <div class="eyebrow">Guard Dashboard</div>
+    <h1 class="page-title">Issue a Fine</h1>
+    <p class="subtitle">Fill this in on the spot. It's logged with a timestamp the moment you submit.</p>
+
+    <div class="card">
+      <form id="fineForm">
+        <label for="studentId">Registration Number</label>
+        <input type="text" id="studentId" placeholder="Enter 6 digit registered number" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" required>
+        <div class="field-hint" id="studentIdHint">Only a 6 digit registered number is allowed.</div>
+
+        <label>Reason</label>
+        <div class="radio-row" id="reasonPills">
+          <label class="radio-pill" data-value="No ID card">
+            <input type="radio" name="reason" value="No ID card"> No ID card
+          </label>
+          <label class="radio-pill" data-value="Misconduct">
+            <input type="radio" name="reason" value="Misconduct"> Misconduct
+          </label>
+          <label class="radio-pill" data-value="Other">
+            <input type="radio" name="reason" value="Other"> Other
+          </label>
+        </div>
+
+        <div id="otherReasonBox" class="hidden">
+          <label for="otherReasonText">Describe the reason</label>
+          <input type="text" id="otherReasonText" placeholder="Why was the student fined?">
+        </div>
+
+        <label for="location">Location</label>
+        <select id="location" required>
+          <option value="">Select location</option>
+          <option>Academic Block</option>
+          <option>Hostel Gate</option>
+          <option>Library</option>
+          <option>Main Gate</option>
+          <option>Cafeteria</option>
+        </select>
+
+        <label for="photo">Photograph (required)</label>
+        <input type="file" id="photo" accept="image/*" required>
+        <img id="photoPreview" class="photo-preview hidden" alt="Photo preview">
+
+        <button type="submit" class="btn">Issue Fine</button>
+        <div class="status-msg" id="statusMsg"></div>
+      </form>
+    </div>
+  </div>
+
 </div>
 
 <script src="app.js"></script>
 <script>
 seedIfEmpty();
+
+const loginGate = document.getElementById('loginGate');
+const dashboard = document.getElementById('dashboard');
+const guardWhoami = document.getElementById('guardWhoami');
+const logoutBtn = document.getElementById('logoutBtn');
+
+function currentGuard() {
+  const raw = sessionStorage.getItem(GUARD_SESSION_KEY);
+  return raw ? JSON.parse(raw) : null;
+}
+
+function showDashboard(username) {
+  loginGate.classList.add('hidden');
+  dashboard.classList.remove('hidden');
+  guardWhoami.textContent = `Signed in as ${username}`;
+  guardWhoami.classList.remove('hidden');
+  logoutBtn.classList.remove('hidden');
+}
+
+(function init() {
+  const session = currentGuard();
+  if (session && GUARD_USERS[session.username]) {
+    showDashboard(session.username);
+  }
+})();
+
+document.getElementById('guardLoginBtn').addEventListener('click', tryLogin);
+document.getElementById('guardPw').addEventListener('keydown', e => { if (e.key === 'Enter') tryLogin(); });
+
+function tryLogin() {
+  const username = document.getElementById('guardUser').value;
+  const pw = document.getElementById('guardPw').value;
+  const msg = document.getElementById('guardLoginMsg');
+
+  if (GUARD_USERS[username] && GUARD_USERS[username] === pw) {
+    sessionStorage.setItem(GUARD_SESSION_KEY, JSON.stringify({ username }));
+    document.getElementById('guardPw').value = '';
+    showDashboard(username);
+  } else {
+    msg.textContent = "Incorrect username or password.";
+    msg.className = "status-msg show err";
+  }
+}
+
+logoutBtn.addEventListener('click', () => {
+  sessionStorage.removeItem(GUARD_SESSION_KEY);
+  guardWhoami.classList.add('hidden');
+  logoutBtn.classList.add('hidden');
+  dashboard.classList.add('hidden');
+  loginGate.classList.remove('hidden');
+  document.getElementById('fineForm').reset();
+  document.getElementById('photoPreview').classList.add('hidden');
+  document.querySelectorAll('.radio-pill').forEach(p => p.classList.remove('active'));
+  document.getElementById('otherReasonBox').classList.add('hidden');
+});
 
 // reason pill toggle UI
 document.querySelectorAll('.radio-pill').forEach(pill => {
@@ -65,30 +155,80 @@ document.querySelectorAll('.radio-pill').forEach(pill => {
     document.querySelectorAll('.radio-pill').forEach(p => p.classList.remove('active'));
     pill.classList.add('active');
     pill.querySelector('input').checked = true;
+    const otherBox = document.getElementById('otherReasonBox');
+    otherBox.classList.toggle('hidden', pill.dataset.value !== 'Other');
   });
+});
+
+// photo preview
+let photoDataUrl = null;
+document.getElementById('photo').addEventListener('change', function() {
+  const file = this.files[0];
+  const preview = document.getElementById('photoPreview');
+  if (!file) {
+    photoDataUrl = null;
+    preview.classList.add('hidden');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = e => {
+    photoDataUrl = e.target.result;
+    preview.src = photoDataUrl;
+    preview.classList.remove('hidden');
+  };
+  reader.readAsDataURL(file);
 });
 
 document.getElementById('fineForm').addEventListener('submit', function(e) {
   e.preventDefault();
   const studentId = document.getElementById('studentId').value.trim();
   const reason = document.querySelector('input[name="reason"]:checked');
+  const otherDetail = document.getElementById('otherReasonText').value.trim();
   const location = document.getElementById('location').value;
-  const photo = document.getElementById('photo').value.trim();
   const msg = document.getElementById('statusMsg');
+  const session = currentGuard();
 
   if (!studentId || !reason || !location) {
-    msg.textContent = "Fill in student ID, reason, and location before submitting.";
+    msg.textContent = "Fill in registration number, reason, and location before submitting.";
     msg.className = "status-msg show err";
     return;
   }
 
-  const fine = addFine({ studentId, reason: reason.value, location, photo });
+  if (!isValidRegNumber(studentId)) {
+    msg.textContent = "Enter 6 digit registered number.";
+    msg.className = "status-msg show err";
+    return;
+  }
+
+  if (reason.value === 'Other' && !otherDetail) {
+    msg.textContent = "Describe the reason for the fine.";
+    msg.className = "status-msg show err";
+    return;
+  }
+
+  if (!photoDataUrl) {
+    msg.textContent = "A photograph is mandatory to issue a fine.";
+    msg.className = "status-msg show err";
+    return;
+  }
+
+  const fine = addFine({
+    studentId,
+    reason: reason.value,
+    otherDetail,
+    location,
+    photo: photoDataUrl,
+    issuedBy: session ? session.username : null
+  });
 
   msg.textContent = `Fine ${fine.id} issued for ${fine.studentId} at ${fmtTime(fine.time)}.`;
   msg.className = "status-msg show ok";
 
   this.reset();
+  photoDataUrl = null;
+  document.getElementById('photoPreview').classList.add('hidden');
   document.querySelectorAll('.radio-pill').forEach(p => p.classList.remove('active'));
+  document.getElementById('otherReasonBox').classList.add('hidden');
 });
 </script>
 </body>

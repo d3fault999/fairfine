@@ -1,4 +1,9 @@
-
+/* ---------------------------------------------------
+   FairFine — visual language: campus citation ticket.
+   Dark "noticeboard" background, amber badge accent,
+   brick-red for violations, warm paper cards shaped
+   like duplicate carbon-copy ticket stubs.
+--------------------------------------------------- */
 
 @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
 
@@ -278,20 +283,63 @@ input:focus, select:focus, textarea:focus {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
+  align-items: stretch;
 }
 .radio-pill {
   border: 1px solid rgba(255,255,255,0.15);
-  border-radius: 100px;
+  border-radius: 8px;
   padding: 8px 14px;
   font-size: 13px;
+  line-height: 1.2;
   cursor: pointer;
   color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
 }
 .radio-pill input { display: none; }
 .radio-pill.active {
   border-color: var(--brick);
   color: var(--text-on-ink);
   background: rgba(192,57,43,0.15);
+}
+
+.field-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 6px;
+  font-family: var(--font-mono);
+}
+
+.photo-preview {
+  display: block;
+  max-width: 160px;
+  max-height: 160px;
+  border-radius: 6px;
+  margin-top: 10px;
+  border: 1px solid rgba(255,255,255,0.15);
+  object-fit: cover;
+}
+
+.photo-thumb {
+  display: block;
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 4px;
+  margin-top: 8px;
+  border: 1px solid var(--paper-line);
+}
+
+input[type=file] {
+  width: 100%;
+  background: var(--ink);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 4px;
+  padding: 10px 12px;
+  color: var(--text-on-ink);
+  font-family: var(--font-body);
+  font-size: 13px;
 }
 
 .btn {

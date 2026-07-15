@@ -10,7 +10,10 @@
 
 <div class="topbar">
   <div class="brand"><span class="dot"></span> FairFine</div>
-  <a class="back-link" href="index.html">&larr; Home</a>
+  <div style="display:flex; align-items:center; gap:10px;">
+    <button class="btn small ghost hidden" id="logoutBtn">Log Out</button>
+    <a class="back-link" href="index.html">&larr; Home</a>
+  </div>
 </div>
 
 <div class="wrap">
@@ -19,10 +22,10 @@
   <div id="loginGate">
     <div class="eyebrow">Admin Login</div>
     <h1 class="page-title">Restricted Access</h1>
-    <p class="subtitle">Password: <code style="color:var(--amber)">admin123</code></p>
+    <p class="subtitle">Enter the admin password to continue.</p>
     <div class="card" style="max-width:360px;">
       <label for="pw">Password</label>
-      <input type="password" id="pw" placeholder="Enter password">
+      <input type="password" id="pw" placeholder="Enter password" autocomplete="off">
       <button class="btn" id="loginBtn">Log In</button>
       <div class="status-msg" id="loginMsg"></div>
     </div>
@@ -64,22 +67,46 @@
 <script>
 seedIfEmpty();
 
+const loginGate = document.getElementById('loginGate');
+const dashboard = document.getElementById('dashboard');
+const logoutBtn = document.getElementById('logoutBtn');
+
+function showDashboard() {
+  loginGate.classList.add('hidden');
+  dashboard.classList.remove('hidden');
+  logoutBtn.classList.remove('hidden');
+  renderAppeals();
+  renderAnalytics();
+}
+
+(function init() {
+  if (sessionStorage.getItem(ADMIN_SESSION_KEY) === '1') {
+    showDashboard();
+  }
+})();
+
 document.getElementById('loginBtn').addEventListener('click', tryLogin);
 document.getElementById('pw').addEventListener('keydown', e => { if (e.key === 'Enter') tryLogin(); });
 
 function tryLogin() {
   const pw = document.getElementById('pw').value;
   const msg = document.getElementById('loginMsg');
-  if (pw === 'admin123') {
-    document.getElementById('loginGate').classList.add('hidden');
-    document.getElementById('dashboard').classList.remove('hidden');
-    renderAppeals();
-    renderAnalytics();
+  if (pw === ADMIN_PASSWORD) {
+    sessionStorage.setItem(ADMIN_SESSION_KEY, '1');
+    document.getElementById('pw').value = '';
+    showDashboard();
   } else {
     msg.textContent = "Incorrect password.";
     msg.className = "status-msg show err";
   }
 }
+
+logoutBtn.addEventListener('click', () => {
+  sessionStorage.removeItem(ADMIN_SESSION_KEY);
+  logoutBtn.classList.add('hidden');
+  dashboard.classList.add('hidden');
+  loginGate.classList.remove('hidden');
+});
 
 // tabs
 document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -100,26 +127,35 @@ function renderAppeals() {
     return;
   }
 
+  // All dynamic values are escaped, and fine IDs are passed via data-*
+  // attributes (not string-interpolated into onclick=""), so stored fine
+  // data can never be used to inject markup or script into this page.
   list.innerHTML = fines.map(f => `
     <div class="ticket">
       <div>
-        <div class="ticket-id">${f.id} &middot; ${f.studentId}</div>
-        <div class="ticket-reason">${f.reason}</div>
+        <div class="ticket-id">${escapeHtml(f.id)} &middot; ${escapeHtml(f.studentId)}</div>
+        <div class="ticket-reason">${escapeHtml(displayReason(f))}</div>
         <div class="ticket-meta">
-          ${f.location} &middot; ${fmtTime(f.time)}<br>
-          <em>"${f.appeal.text}"</em>
+          ${escapeHtml(f.location)} &middot; ${fmtTime(f.time)}<br>
+          <em>"${escapeHtml(f.appeal.text)}"</em>
         </div>
       </div>
       <div class="ticket-right">
-        <span class="badge ${badgeClass(f.status)}">${f.status}</span>
+        <span class="badge ${badgeClass(f.status)}">${escapeHtml(f.status)}</span>
         <div style="display:flex; gap:6px;">
-          <button class="btn small" style="background:var(--green); color:#0c1a10;" onclick="decide('${f.id}','approved')">Approve</button>
-          <button class="btn small danger" onclick="decide('${f.id}','rejected')">Reject</button>
+          <button class="btn small" style="background:var(--green); color:#0c1a10;" data-action="approved" data-fine-id="${escapeHtml(f.id)}">Approve</button>
+          <button class="btn small danger" data-action="rejected" data-fine-id="${escapeHtml(f.id)}">Reject</button>
         </div>
       </div>
     </div>
   `).join('');
 }
+
+document.getElementById('appealsList').addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-fine-id]');
+  if (!btn) return;
+  decide(btn.dataset.fineId, btn.dataset.action);
+});
 
 function decide(fineId, decision) {
   resolveAppeal(fineId, decision);
@@ -163,7 +199,7 @@ function drawBarChart(elId, counts) {
     <div class="bar-col">
       <div class="bar-count">${count}</div>
       <div class="bar" style="height:${Math.max((count / max) * 100, 4)}%"></div>
-      <div class="bar-label">${label}</div>
+      <div class="bar-label">${escapeHtml(label)}</div>
     </div>
   `).join('');
 }

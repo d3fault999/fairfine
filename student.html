@@ -10,20 +10,24 @@
 
 <div class="topbar">
   <div class="brand"><span class="dot"></span> FairFine</div>
-  <a class="back-link" href="index.html">&larr; Home</a>
+  <div style="display:flex; align-items:center; gap:10px;">
+    <button class="btn small ghost hidden" id="logoutBtn">Log Out</button>
+    <a class="back-link" href="index.html">&larr; Home</a>
+  </div>
 </div>
 
 <div class="wrap">
   <div class="eyebrow">Student Dashboard</div>
   <h1 class="page-title">My Fines</h1>
-  <p class="subtitle">Enter your student ID to see every fine on record and appeal one if needed.</p>
+  <p class="subtitle">Enter your registration number to see every fine on record and appeal one if needed.</p>
 
   <div class="card">
-    <label for="lookupId">Student ID</label>
+    <label for="lookupId">Registration Number</label>
     <div style="display:flex; gap:10px;">
-      <input type="text" id="lookupId" placeholder="e.g. 22BCE1042">
+      <input type="text" id="lookupId" placeholder="Enter 6 digit registered number" inputmode="numeric" maxlength="6" pattern="[0-9]{6}">
       <button class="btn small" id="lookupBtn" style="margin-top:0;">Look up</button>
     </div>
+    <div class="field-hint">Only a 6 digit registered number is allowed.</div>
   </div>
 
   <div id="results"></div>
@@ -43,38 +47,53 @@
 seedIfEmpty();
 
 let currentFineForAppeal = null;
+const logoutBtn = document.getElementById('logoutBtn');
 
+// All dynamic values are escaped with escapeHtml(), and buttons that need
+// a fine ID use data-* attributes with delegated listeners rather than
+// interpolating stored text into inline onclick="" handlers — so a fine's
+// reason/appeal text can never inject markup or script into this page.
 function render(studentId) {
   const results = document.getElementById('results');
   const fines = getFinesForStudent(studentId);
+  logoutBtn.classList.remove('hidden');
 
   if (fines.length === 0) {
-    results.innerHTML = `<div class="empty-state">No fines found for "${studentId.toUpperCase()}". Either a clean record, or check the ID.</div>`;
+    results.innerHTML = `<div class="empty-state">No fines found for "${escapeHtml(studentId.toUpperCase())}". Either a clean record, or check the registration number.</div>`;
     return;
   }
 
   results.innerHTML = fines.map(f => `
     <div class="ticket">
       <div>
-        <div class="ticket-id">${f.id} &middot; ${f.studentId}</div>
-        <div class="ticket-reason">${f.reason}</div>
+        <div class="ticket-id">${escapeHtml(f.id)} &middot; ${escapeHtml(f.studentId)}</div>
+        <div class="ticket-reason">${escapeHtml(displayReason(f))}</div>
         <div class="ticket-meta">
-          ${f.location}<br>
+          ${escapeHtml(f.location)}<br>
           ${fmtTime(f.time)}
-          ${f.appeal ? `<br><em>Appeal: "${f.appeal.text}"</em>` : ''}
+          ${f.appeal ? `<br><em>Appeal: "${escapeHtml(f.appeal.text)}"</em>` : ''}
+          ${f.photo ? `<br><img src="${f.photo}" class="photo-thumb" alt="Fine photo">` : ''}
         </div>
       </div>
       <div class="ticket-right">
-        <span class="badge ${badgeClass(f.status)}">${f.status}</span>
-        ${f.status === 'unpaid' ? `<button class="btn small ghost" style="background:var(--ink); color:var(--text-on-ink);" onclick="openAppeal('${f.id}', '${f.reason.replace(/'/g,"")}')">Appeal</button>` : ''}
+        <span class="badge ${badgeClass(f.status)}">${escapeHtml(f.status)}</span>
+        ${f.status === 'unpaid' ? `<button class="btn small ghost" style="background:var(--ink); color:var(--text-on-ink);" data-appeal-id="${escapeHtml(f.id)}">Appeal</button>` : ''}
       </div>
     </div>
   `).join('');
 }
 
-function openAppeal(fineId, reason) {
+document.getElementById('results').addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-appeal-id]');
+  if (!btn) return;
+  openAppeal(btn.dataset.appealId);
+});
+
+function openAppeal(fineId) {
+  const fine = getFines().find(f => f.id === fineId);
+  if (!fine) return;
   currentFineForAppeal = fineId;
-  document.getElementById('appealFor').textContent = `Appealing ${fineId} — ${reason}`;
+  document.getElementById('appealFor').textContent = `Appealing ${fineId} — ${displayReason(fine)}`;
   document.getElementById('appealBox').classList.remove('hidden');
   document.getElementById('appealBox').scrollIntoView({ behavior: 'smooth' });
 }
@@ -93,13 +112,30 @@ document.getElementById('submitAppealBtn').addEventListener('click', () => {
   render(document.getElementById('lookupId').value);
 });
 
-document.getElementById('lookupBtn').addEventListener('click', () => {
+function doLookup() {
   const id = document.getElementById('lookupId').value.trim();
-  if (id) render(id);
-});
+  const results = document.getElementById('results');
+  if (!id) return;
+  if (!isValidRegNumber(id)) {
+    results.innerHTML = `<div class="empty-state">Enter 6 digit registered number.</div>`;
+    return;
+  }
+  render(id);
+}
+
+document.getElementById('lookupBtn').addEventListener('click', doLookup);
 
 document.getElementById('lookupId').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') document.getElementById('lookupBtn').click();
+  if (e.key === 'Enter') doLookup();
+});
+
+logoutBtn.addEventListener('click', () => {
+  document.getElementById('lookupId').value = '';
+  document.getElementById('results').innerHTML = '';
+  document.getElementById('appealBox').classList.add('hidden');
+  document.getElementById('appealText').value = '';
+  currentFineForAppeal = null;
+  logoutBtn.classList.add('hidden');
 });
 </script>
 </body>
