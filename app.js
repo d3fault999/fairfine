@@ -1,10 +1,8 @@
-// app.js — core data logic for FairFine
-// Using localStorage as the data layer for now (no backend for the demo)
+
 
 const DB_KEY = "fairfine_fines_v1";
 
-// ---- auth config (demo only — this is a client-side hackathon build,   ----
-// ---- so these are NOT real secrets; a real deployment needs a backend) ----
+
 const GUARD_USERS = {
   "warden1": "123",
   "warden2": "123"
@@ -123,7 +121,7 @@ function seedIfEmpty() {
     { studentId: "100910", reason: "Other", otherDetail: "Riding a bike inside the academic block corridor", location: "Main Gate", photo: PLACEHOLDER_PHOTO, issuedBy: "warden2" }
   ];
   demo.forEach(addFine);
-  // mark one as appealed for demo purposes
+  
   const fines = getFines();
   if (fines[1]) submitAppeal(fines[1].id, "I had left my ID at the hostel by mistake, showed my library card instead.");
 }
